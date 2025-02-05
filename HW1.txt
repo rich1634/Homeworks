@@ -1,0 +1,7 @@
+140M	.
+123M	./snap
+16M	./.cache
+644K	./.local
+184K	./Res
+136K	./.config
+12K	./lesson
