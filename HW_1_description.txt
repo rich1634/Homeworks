@@ -1,0 +1,11 @@
+1.
+du -h --max-depth=1 2> /dev/null | sort -hr | head -7 > /home/ar/HM1.txt
+
+2> /dev/null #вывод всех ошибок в "нулевое устройство". 
+sort -hr #сортировка в человеческом виде и реверсивно.
+head -7 #вывод первых 7 значений.
+
+2. 
+useradd testuser  #создание пользователя
+   sudo usermod -aG sudo testuser #добавление пользователя 
+   cat /etc/group | grep sudo #Проверка. Вывод участников группы sudo.
