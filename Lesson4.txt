@@ -9,3 +9,6 @@ git remote add lesson41 https://github.com/rich1634/lesson4.git
 git add .   добавление новых файлов.
 git commit -m "to test" - комит изменений
 git push origin ИМЯ ВЕТКИ - добавление новых файлов(изменений)  в ветку github
+
+Разобрать команды все еще раз
+
