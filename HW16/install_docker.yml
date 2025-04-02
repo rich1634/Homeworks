@@ -1,0 +1,25 @@
+---
+- name: Install Docker on Ubuntu and configure user
+  hosts: HW2  # группа хостов
+  become: true  # требует прав sudo
+  vars:
+    docker_user: "appuser"  #имя пользователя как переменная
+
+  tasks:
+    - name: Install Docker packages
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Ensure Docker service is running and enabled
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add user to docker group
+      user:
+        name: "{{ docker_user }}"
+        groups: docker
+        append: yes

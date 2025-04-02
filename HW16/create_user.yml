@@ -1,0 +1,25 @@
+---
+- name: Create user with home directory
+  hosts: HW2
+  become: yes  # Требуются права root/sudo
+
+  vars:
+    username: "appuser"       # Имя создаваемого пользователя
+    password: "$6$rounds=656000$SALTEXAMPLE$PASSWORDHASH"  # Шифрованный пароль (генерируется командой mkpasswd)
+    create_home: yes         # Создавать домашнюю директорию
+    home_dir: "/home/{{ username }}"  # Путь к домашней директории
+    shell: "/bin/bash"       # Используемый shell
+    #user_groups: ["sudo"]           # Группы пользователя формат list
+    #
+  tasks:
+    - name: Create user with home directory
+      ansible.builtin.user:
+        name: "{{ username }}"
+        password: "{{ password }}"
+        home: "{{ home_dir }}"
+        shell: "{{ shell }}"
+        append: yes          # Добавить к существующим группам
+        create_home: "{{ create_home }}"
+        state: present
+
+

@@ -1,0 +1,27 @@
+- name: Copy file to remote and then delete locally
+  hosts: HW2
+  become: yes
+  vars:
+    local_file_path: "/home/ubuntu/testfile1"  # Укажите путь к локальному файлу
+    remote_file_path: "/home/ubuntu/testfile1"  # Укажите путь на удалённом сервере
+
+  tasks:
+    - name: Copy file from local to remote
+      ansible.builtin.copy:
+        src: "{{ local_file_path }}"
+        dest: "{{ remote_file_path }}"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Verify file exists on remote
+      ansible.builtin.stat:
+        path: "{{ remote_file_path }}"
+      register: remote_file
+
+    - name: Delete local file (only if copy was successful)
+      ansible.builtin.file:
+        path: "{{ local_file_path }}"
+        state: absent
+      when: remote_file.stat.exists
+
