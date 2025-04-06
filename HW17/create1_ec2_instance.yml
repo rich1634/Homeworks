@@ -1,0 +1,125 @@
+- name: Create EC2 t2.micro instance
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    aws_region: "us-east-1"  
+    instance_type: "t2.micro"
+    ami_id: "ami-084568db4383264d4"  # id образа
+    key_name: "devops"   #  Ключ для подключения к instance AWS
+    security_group: "sg-06b230dc552f45b09"  
+    subnet_id: "subnet-08091e34ba8747d07"   
+
+
+
+
+
+  tasks:
+    - name: Create EC2 instance
+      amazon.aws.ec2_instance:
+        region: "{{ aws_region }}"
+        key_name: "{{ key_name }}"
+        instance_type: "{{ instance_type }}"
+        image_id: "{{ ami_id }}"
+        security_group: "{{ security_group }}"
+        subnet_id: "{{ subnet_id }}"
+        wait: yes
+        state: present
+        tags:
+          Name: "Docker-Host"
+          Environment: "Dev"
+      register: ec2
+
+    - name: Print instance information
+      debug:
+        var: ec2
+
+  # Проверка доступности SSH
+    - name: Wait for SSH to come up
+      wait_for:
+        host: "{{ ec2.instances[0].public_ip_address }}"
+        port: 22
+        timeout: 300
+      when: ec2.instances[0].public_ip_address is defined
+
+         # Добавление хоста в inventory
+    - name: Add new instance to inventory
+      add_host:
+        name: "docker_host"
+        ansible_host: "{{ ec2.instances[0].public_ip_address }}"
+        ansible_user: "ubuntu"
+        ansible_ssh_private_key_file: "/home/ubuntu/.ssh/{{ key_name }}.pem"
+        groups: "docker_hosts"
+
+- name: Configure Docker host
+  hosts: docker_hosts
+  become: yes
+  gather_facts: yes
+
+  tasks:
+
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+
+    - name: Install prerequisites
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: <https://download.docker.com/linux/ubuntu/gpg>
+        state: present
+
+    - name: Determine Ubuntu codename
+      shell: lsb_release -cs
+      register: ubuntu_codename
+      changed_when: false
+
+    - name: Debug Ubuntu codename
+      debug:
+        var: ubuntu_codename.stdout
+
+    - name: Add Docker repository (with correct codename)
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable 
+        state: present
+        filename: docker-ce
+        update_cache: yes
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: yes
+
+    - name: Ensure Docker is running and enabled
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+
+    - name: Pull Docker image
+      docker_image:
+        name: nginx
+        source: pull
+
+    - name: Run Docker container
+      community.docker.docker_container:
+        name: nginx
+        image: nginx
+        ports:
+          - "80:80"
+        state: started
+        restart_policy: unless-stopped
