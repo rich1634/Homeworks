@@ -1,0 +1,118 @@
+# Define the provider
+provider "aws" {
+  region = "us-east-1" # Replace with your desired AWS region
+}
+
+# Create a VPC
+resource "aws_vpc" "ridchenko_vpc" {
+  cidr_block           = "10.10.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = "Ridchenko_vpc"
+  }
+}
+#Create internet gateway
+resource "aws_internet_gateway" "ridchenko_igw" {
+  vpc_id = aws_vpc.ridchenko_vpc.id
+  tags = {
+    Name = "ridchenko_igw"
+  }
+}
+
+# Create a subnet
+resource "aws_subnet" "ridchenko_subnet" {
+  vpc_id                  = aws_vpc.ridchenko_vpc.id
+  cidr_block              = "10.10.1.0/24"
+  map_public_ip_on_launch = true
+  tags = {
+    Name = "RidchenkoSubnet"
+  }
+}
+# Create route table
+resource "aws_route_table" "ridchenko_public_route_table" {
+  vpc_id = aws_vpc.ridchenko_vpc.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.ridchenko_igw.id
+  }
+  tags = {
+    Name = "public_route_table"
+  }
+}
+#Link route table to subnet 
+resource "aws_route_table_association" "ridchenko_subnet_association" {
+  subnet_id      = aws_subnet.ridchenko_subnet.id
+  route_table_id = aws_route_table.ridchenko_public_route_table.id
+}
+
+# Create a security group
+resource "aws_security_group" "ridchenko_sg" {
+  name   = "RidchenkoSecurityGroup"
+  vpc_id = aws_vpc.ridchenko_vpc.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # Replace with your desired IP range
+  }
+
+  egress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "TCP"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "RidchenkoSecurityGroup"
+  }
+}
+
+# Create an EC2 instance
+resource "aws_instance" "ridchenko_instance" {
+  ami           = "ami-084568db4383264d4" # Amazon Linux 2 AMI
+  instance_type = "t2.micro"              # Adjust instance type as needed
+
+  subnet_id                   = aws_subnet.ridchenko_subnet.id
+  vpc_security_group_ids      = [aws_security_group.ridchenko_sg.id]
+  associate_public_ip_address = true
+
+  root_block_device {
+    volume_type = "gp3"
+    volume_size = 8 # Adjust volume size as needed
+  }
+
+  key_name = "devops" # Replace with your existing key pair name or create a new one
+
+  tags = {
+    Name = "RidchenkoInstance"
+  }
+}
+
+#Output block
+output "ec2_instance_id" {
+  description = "ID created instance"
+  value       = aws_instance.ridchenko_instance.id
+}
+
+# List all Security Groups
+data "aws_security_groups" "all_sgs" {}
+
+# Pick one Security Group over the list
+data "aws_security_group" "any_sg" {
+  id = data.aws_security_groups.all_sgs.ids[0] # Pick first group
+}
+
+# Print found Security Group
+output "any_security_group_id" {
+  description = "ID any found Security Group"
+  value       = data.aws_security_group.any_sg.id
+}
+
+output "any_security_group_name" {
+  description = "name any Security Group"
+  value       = data.aws_security_group.any_sg.name
+}
